@@ -1,0 +1,62 @@
+name: Go CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.18'
+
+    - name: Install dependencies
+      run: |
+        go mod tidy
+
+    - name: Build the Go app
+      run: |
+        go build -o go-app main.go
+
+    - name: Create ZIP file
+      run: |
+        zip go-app.zip go-app
+
+    - name: Create TAR.GZ file
+      run: |
+        tar -czvf go-app.tar.gz go-app
+
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/go-app:latest .
+
+    - name: Push Docker image to DockerHub
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push ${{ secrets.DOCKER_USERNAME }}/go-app:latest
+
+    - name: Upload ZIP file as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: go-app-zip
+        path: go-app.zip
+
+    - name: Upload TAR.GZ file as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: go-app-tar
+        path: go-app.tar.gz
+
+    - name: Upload Docker image as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: go-app-docker-image
+        path: ${{ secrets.DOCKER_USERNAME }}/go-app:latest
